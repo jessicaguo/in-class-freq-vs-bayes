@@ -1,0 +1,2158 @@
+---
+title: "Frequentist vs. Bayesian"
+format: pdf
+editor_options: 
+  chunk_output_type: console
+author: 
+  - name: Stefani Langehennig
+  - name: Zach del Rosario
+---
+
+# 00 - Sustainability Trends Among Disadvantaged Communities
+
+As climate change continues to impact the world in which we live, numerous initiatives have been started to better understand the influence it has on individuals and communities. One of those initiatives stems directly from an Executive Order (EO) issued by President Joe Biden in January 2021. The EO resulted in the Council on Environmental Quality creating a tool by which the public can track various burdens across a number of communities. The primary aim of the tool is identify and subsequently help communities disadvantaged by these burdens in government social programs.
+
+[The Climate and Economic Justice Screening Tool](https://screeningtool.geoplatform.gov/en/) (CEJST) is the result of the EO. While the tool established by the Council on Environmental Quality covers a number of burdens (health, transportation, and workforce development, for example), this activity will focus on the sustainability aspects of the tool, including climate change, energy, and legacy pollution burdens on communities.
+
+To set the stage for this activity, we are going to use the CEJST data to explore whether there is a relationship between the energy burden percentile in census tracts and the share of population of Blacks or African-Americans in census tracts. Below, we will explore the dataset, as well as our variables of interest, in-depth.
+
+## Dataset
+
+The data used for this analysis comes from the [CEJST website](https://screeningtool.geoplatform.gov/en/downloads). The columns (variables) we are most interested in for better understanding these data are:
+
+-   The *energy burden percentile*, which captures the percentile of energy cost as well as energy-related pollution within a census tract.
+-   The *percent of African-American or Black alone*, which captures the percent of African-American or Black individuals in a census tract.
+
+First, we will load our data and clean up the variable names using the various packages available to us in the `tidyverse`.
+
+```{r}
+#| warning: false
+#| output: false
+
+# Load packages
+library(tidyverse)
+library(janitor)
+library(hexbin)
+library(broom)
+
+# Load CEJST data and create a new dataframe called 'df_raw'
+filename <- "data/1.0-communities.csv"
+df_raw <- read_csv(filename)
+
+```
+
+```{r}
+#| warning: false
+#| output: false
+
+# Create a new dataframe called 'df_data' with new column names
+df_data <- 
+  df_raw |>
+  janitor::clean_names()
+```
+
+```{r}
+# Select only those columns we'll use in this activity
+df_data |>
+  select(
+    census_tract_2010_id, 
+    percent_black_or_african_american_alone, 
+    energy_burden_percentile
+  ) |>
+  head(3)
+```
+
+We will focus on a few columns in this dataset:
+
+-   `census_tract_2010_id`: Each row in this dataset corresponds to a *census tract*; this is a small geographic region of the U.S. chosen to represent a consistent number of persons. Census tracts contain about 4000 people, though may contain as few as 1200 and as many as 8000 people.
+-   `percent_black_or_african_american_alone`: This reports the percent of people in the census tract who are Black or African American.
+-   `energy_burden_percentile`: This reports the **percentile** of energy burden for each census tract. Energy burden is computed as the average annual cost of energy divided by the average household income within the census tract---this is a measure of how "burdened" a household is by energy expenses. A larger energy burden means a household needs to spend more of its income on energy bills.
+    -   The percentile is then computed as the *ordering* of energy burden values for each census tract: The 0th percentile corresponds to the smallest value of energy burden, while the 100th percentile corresponds to the largest value of energy burden.
+
+Next, let's conduct EDA to better understand our variables of interest, `energy_burden_percentile` and `percent_black_or_african_american_alone`.
+
+## Exploratory Data Analysis (EDA)
+
+To begin, let's subset our data so we can get our descriptive statistics for our variables of interest.
+
+```{r}
+# Subset full dataframe 
+df_small <- 
+  df_data |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone)
+
+# Take a look at the subset of data
+glimpse(df_small)
+
+```
+
+Let's use this subset to get our measures of spread and central tendency.
+
+```{r}
+summary(df_small)
+```
+
+::: {.callout-note icon="false" title="Synthesizing Descriptive Statistics"}
+What are some take-aways from our descriptive statistics for our variables of interest? Anything concerning or interesting?
+:::
+
+Next, create a plot of the energy burden percentile vs. the % Black census tract to see if there is a negative or positive trend between the two variables.
+
+```{r}
+#| warning: false
+#| echo: false
+
+# Complete code below to make plot
+df_small |>  
+  ggplot() +
+  geom_hex() +
+  xlab("") + 
+  ylab("") +
+  geom_smooth() +
+  scale_fill_gradient2(low = "#af8dc3",
+                       mid = "#f7f7f7",
+                       high = "#7fbf7b",
+                       midpoint = 500) +
+  theme_minimal()
+```
+
+As the figure shows, there is a positive relationship between the percent of Black or African-Americans living in a census tract and the energy burden percentile in the respective census tract.
+
+::: {.callout-note icon="false" title="Visualizing Variables of Interest"}
+What other ways might we choose to visualize our variables of interest? Is there anything else concerning or interesting based on our visualizations?
+:::
+
+## Next Steps
+
+We now have a better understanding of sustainability trends among disadvantaged communities using just a few of the variables in the CEJST dataset. Specifically, we explored the relationship between the percent of Black or African-Americans living in a census tract and the energy burden percentile in the census tract. Our high-level exploratory data analysis uncovered a positive relationship: Black or African-Americans that live in a census tract appear to experience a higher energy burden.
+
+::: {.callout-note icon="false" title="Other Trends"}
+How might the trend differ by state? Why do you think they will or will not differ from the overall trend observed above?
+:::
+
+With this information in hand, we will use these data, as well as other variables in the CEJST dataset, to formulate hypotheses. We will test our hypotheses in both a frequentist and Bayesian framework, comparing the application of both approaches across the different stages of our analysis with the end goal being general inference.
+
+# 01 - Introduction to different statistical paradigms
+
+This activity is all about *statistical inference* and *statistical assumptions*. Both are important when you have data and want to use that data to help you better understand some phenomenon about the world. For example, in section 00, we used the CEJST dataset to understand general trends around sustainability and disadvantaged communities. However, at this point, we have not crafted specific research questions or hypotheses that we would like to rigorously test with the data we have. Nor do we know, with any degree of certainty, how "correct" the trends are that we saw in our data or all the ways that this trend could have occurred.
+
+There are a few different ways that we can test our hypotheses using methods of statistical inference. Statistical inference allows us to take some data, create a model, and make sense of the complex world around us. Each method has a set of assumptions built into it, which influences the approach you take to answer your research questions, as well as the way you interpret your findings. In the activity that follows, you will have the opportunity to use methods of statistical inference to answer a research question and explain, based on the set of assumptions baked into your approach, your ultimate findings.
+
+## Learning Objectives
+
+By the end of the activity, you should be able to:
+
+1.  Evaluate multiple hypotheses using inferential statistical results
+2.  Connect your evaluation of hypotheses with real-world factors
+3.  State the primary statistical assumptions for Frequentist and Bayesian inference, and understand how they can lead to different conclusions
+
+## Before We Begin...
+
+Ask yourself the following questions:
+
+::: {.callout-note icon="false" title="Warmup Questions"}
+-   What do you remember about analyzing a dataset with statistics?
+-   What do you know about frequentist and Bayesian statistics? (*Note*: It's okay if you don't know what this means!)
+:::
+
+Discuss these questions with the people around you.
+
+## The Big Idea: Inference
+
+Statistical inference is drawing conclusions about **data we haven't seen** using **only the data that are available.** As a simple example, if we're interested in the energy burden pattern in Colorado but we only have data from Massachusetts, we should be careful when trying to use the MA data to predict patterns in CO. Crucially, **the assumptions we make for inference will strongly affect the conclusions we make.**
+
+::: {.callout-note icon="false" title="All models are wrong...."}
+All statistical analyses involve making assumptions---we'll practice making and assessing statistical assumptions in this activity.
+:::
+
+## Crafting Research Questions & Hypotheses
+
+Ahead of using data and statistical inference, we usually create theory-based *research questions* and *hypotheses* that help guide what we expect to find. Both are focused on an aspect of the world that we want to know more about. However, research questions tend to be open-ended, allowing for discussion on what the outcome might be and what might explain it. For example, a research question about sustainability and diverse communities may look like this:
+
+> *Why does the projected flood risk vary among different communities in U.S. Census tracts?*
+
+Hypotheses, on the other hand, tend to be closed-ended, articulating a certain relationship between an outcome and the things that influence that outcome. For example, one of the testable hypotheses stemming from the research question on projected flood risk may be:
+
+> *As the population density of Hispanic communities increases (decreases), the projected flood risk increases (decreases).*
+
+Note that this hypothesis is succinct and testable with the data we have. It is also directly related to our more general research question.
+
+## Paradigms in Statistical Inference
+
+There are a few different ways to draw conclusions about questions we have using data. We will focus on two inferential perspectives in this class: *Frequentist* and *Bayesian*. For this activity, we will discuss these differences in the context of **general inference** and **model summaries**.
+
+For general inference, we are concerned with answering questions about a *larger* dataset, while only having access to a *smaller* dataset. We do this by:
+
+1.  Translating our question into a mathematical model, which requires assumptions
+2.  Fitting the model using data
+3.  Interpreting model results in terms of our question
+
+After we have done the general inference steps above, we must think about how to translate what we have done and what we have found.
+
+-   Statistical models are complex objects, so we use *model summaries* to help.
+-   Statistical models represent the *uncertainty due to limited data*.
+
+Some common summaries we use:
+
+| Point estimate | Uncertainty | Interval                |
+|----------------|-------------|-------------------------|
+| 42             | 4           | (42 +/- 2x4) = (34, 50) |
+
+: Common Model Summaries {.sm .bordered}
+
+::: {.callout-note icon="false" title="Stay Tuned!"}
+Note that we haven't talked about frequentist or Bayesian statistics yet! We'll get there later in the activity....
+
+You can read more about the statistical inference in [03 One Page Summary](https://github.com/bayes-bats/tier2-freq-bayes/blob/main/development/03-simplified-main.qmd).
+:::
+
+## Next Steps
+
+Given the context we have on sustainability trends among disadvantaged communities using just a few of the variables in the CEJST dataset, we can develop a research question and hypotheses to test using methods of statistical inference:
+
+**Research Question:**
+
+> *Do Black Americans experience a disproportionate level of energy expenditure?*
+
+**Hypothesis:**
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+
+# 02a - Frequentist analysis
+
+Armed with all of that background knowledge on the CEJST dataset and on statistical inference, we can proceed with a detailed analysis of the data. In particular, we are interested in assessing the following hypothesis:
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+
+In this part of the session you will interpret results from a statistical model fitted to datasets from different U.S. States.
+
+## Overview
+
+Throughout this activity, you will be studying a statistical model fitted to data from the CEJST dataset. As a reminder, we are interested in the `Energy Burden Percentile` (higher values correspond to a higher burden) and the `Percent Black Census Tract` (which measures the number of people in a region who are Black).
+
+
+```{r fig-overview}
+#| warning: false
+#| echo: false
+
+df_MA <- 
+  df_data |> 
+  filter(
+    str_detect(state_territory, "Massachusetts"),
+    !is.na(percent_black_or_african_american_alone),
+    !is.na(energy_burden_percentile)
+  ) |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone)
+
+  
+df_MA |> 
+   ggplot(aes(
+    percent_black_or_african_american_alone,
+    energy_burden_percentile
+  )) +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+From this scatterplot, we can see that the energy burden seems to
+increase as the percent Black increases. However, we can make this rough
+observation more formal by using a statistical model.
+
+## Analyze a frequentist model
+
+To analyze the dataset, we will use the following statistical model,
+
+$$ B = m P + b + \epsilon $$
+
+where $B$ is the energy burden percentile, $P$ is the percent Black, $m$
+is the slope parameter, $b$ is the intercept parameter, and $\epsilon$
+is a *residual* term that represents factors not accounted in the model.
+The residual term is assumed to be normally distributed
+$\epsilon \sim N(0, \sigma^2)$ with an unknown parameter $\sigma^2$.
+
+
+```{r fit-MA}
+#| include: false
+#| echo: false
+
+model_MA <- 
+  lm(formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+     data = df_MA)
+```
+
+## Study the MLE estimates
+
+Results from a Frequentist model take the form of a *maximum likelihood estimates* for the model parameters. The model has two parameters that are closely related to our hypothesis: The slope $m$ and intercept $b$ of the fitted line. "Fitting" the Frequentist model to the Massachusetts dataset will result in point estimate ("best fit") values for the parameters and a *confidence interval* for each estimate. The point estimates and confidence intervals from fitting the Massachusetts data are shown below:
+
+```{r mle-MA}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 8
+#| 
+df_model_MA <- 
+  model_MA |> 
+  tidy() |> 
+  mutate(
+    lower = estimate - 2 * std.error,
+    upper = estimate + 2 * std.error,
+  )
+
+df_model_MA |> 
+  select(term, lower, estimate, upper) |> 
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "percent_black_or_african_american_alone" ~ "Slope"
+    )
+  ) |> 
+  mutate(across(
+    c(lower, estimate, upper),
+    ~round(., digits = 1)
+  )) |> 
+  
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
+  knitr::kable()
+```
+
+A confidence interval helps us determine **how confident** we should be in conclusions drawn from the model. The next exercise will help you assess confidence in results based on the fitted model.
+
+## Assessing confidence
+
+Let's imagine three different posterior sets of point estimates and confidence intervals for the slope parameter $m$:
+
+| **Case** | **Lower** | **Estimate** | **Upper** |
+|----------|-----------|--------------|-----------|
+|    A     |   -10     |      60      |    100    |
+|    B     |    -5     |       5      |     15    |
+|    C     |    25     |      50      |     75    |
+
+The most important thing to remember about confidence intervals is the *golden rule*....
+
+::: {.callout-note icon="false" title="Golden Rule for Confidence Intervals"}
+When studying a confidence interval, we should assume the value we are trying to estimate could be **anywhere** inside the interval.
+:::
+
+**Model summaries**
+
+<!-- task-begin -->
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   Which case (A, B, or C) gives the *highest* point estimate?
+    -   (Write your response here): 
+-   Which cases (A, B, or C) include $0$ between their `Lower` and `Upper` values?
+    -   (Write your response here): 
+-   Which case (A, B, or C) has the *narrowest* confidence interval? (i.e., the difference between `Upper - Lower` is smallest)
+    -   (Write your response here): 
+-   Which case suggests the *highest confidence* that the slope parameter is positive? How can you tell?
+    -   (Write your response here): 
+<!-- task-end -->
+<!-- solution-begin -->
+-   Which case (A, B, or C) gives the *highest* point estimate?
+    -   Case A
+-   Which cases (A, B, or C) include $0$ between their `Lower` and `Upper` values?
+    -   Cases A and B
+-   Which case (A, B, or C) has the *narrowest* confidence interval? (i.e., the difference between `Upper - Lower` is smallest)
+    -   Case B
+-   Which case suggests the *highest confidence* that the slope parameter is positive? How can you tell?
+    -   Case C; it is the only CI that excludes zero.
+<!-- solution-end -->
+:::
+
+**General inference**
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   How does the slope parameter relate to our hypothesis? As a reminder, our hypothesis is: 
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).* 
+
+<!-- task-begin -->
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+Let's return to the posterior from our model for the Massachusetts data and use the same reasoning as above to make sense of the results.
+
+```{r mle-MA-repeat}
+#| warning: false
+#| echo: false
+#| fig-align: center
+df_model_MA |> 
+  select(term, lower, estimate, upper) |> 
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "percent_black_or_african_american_alone" ~ "Slope"
+    )
+  ) |> 
+  mutate(across(
+    c(lower, estimate, upper),
+    ~round(., digits = 1)
+  )) |> 
+  
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
+  knitr::kable()
+```
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+As a reminder, our hypothesis is:
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+
+<!-- task-begin -->
+-   For Massachusetts, does the fitted model support or contradict our
+    hypothesis? 
+    -   (Write your response here):
+-   How confident are you in the model results?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+## Study the prediction and confidence band
+
+Frequentist analysis produces a "best fit" line, but the confidence intervals on the slope and intercept imply a *family* of lines. We call this the *confidence band* for the regression line. For instance, the following visualizes the best fit line (solid blue) and confidence band (transparent blue) against the Massachusetts data. Practically, the confidence band tells us that any line we can draw within the bounds is *compatible* with the data we have.
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+#| fig-cap: Best fit line and confidence band for Massachusetts data.
+
+# What is the code below doing?
+df_MA_pred <-  
+  tibble(percent_black_or_african_american_alone = seq(
+    min(df_MA$percent_black_or_african_american_alone),
+    max(df_MA$percent_black_or_african_american_alone),
+    length.out = 100
+  ))
+
+# What is the predict() function outputting?
+df_MA_pred <- 
+  bind_cols(
+    df_MA_pred,
+    predict(
+      model_MA, 
+      interval = 'confidence',
+      newdata = df_MA_pred
+    )
+  )
+
+df_MA_pred |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+  )) +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    fill = "blue",
+    alpha = 1/3
+  ) +
+  geom_line(
+    aes(y = fit),
+    linewidth = 0.7,
+    color = "blue"
+  ) +
+  geom_point(
+    data = df_MA,
+    mapping = aes(y = energy_burden_percentile),
+    size = 0.1
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+We can use this kind of plot (predictions against observed data) as a way to sanity check the model. You'll do this in the following questions.
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   Do all data points (black dots) land near the best fit line (solid blue line), or do some dots land far from the line?
+    -   (Write your response here):
+-   This model represents the *overall trend* in the data well. In your own words, describe how the model fits the overall trend in the data.
+    -   (Write your response here): 
+:::
+
+The model should fit the data reasonably well; otherwise, we should *distrust* its results. It doesn't matter if the MLE estimates agree with our hypothesis if the model fits the data poorly!
+
+## Data rollout
+
+For the rest of the activity we'll consider a scenario where our access to the CEJST data is limited: Suppose we are conducting our analysis while the data are actively being gathered. In this case, we may have access to the data for some states before others. In this context, this means we'll study some of the individual states before we study the full USA.
+
+Armed with this fundamental understanding of statistical inference, we can now apply these ideas to study data from the other states!
+
+## Colorado
+
+```{r fit-CO}
+#| include: false
+#| echo: false
+#| cache: true
+df_CO <- 
+  df_data |> 
+  filter(
+    str_detect(state_territory, "Colorado"),
+    !is.na(percent_black_or_african_american_alone),
+    !is.na(energy_burden_percentile)
+  ) |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone)
+
+model_CO <- 
+  lm(
+    data = df_CO,
+    formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  )
+```
+
+### Study the results
+
+```{r mle-CO}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 8
+df_model_CO <- 
+  model_CO |> 
+  tidy() |> 
+  mutate(
+    lower = estimate - 2 * std.error,
+    upper = estimate + 2 * std.error,
+  )
+
+df_model_CO |> 
+  select(term, lower, estimate, upper) |> 
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "percent_black_or_african_american_alone" ~ "Slope"
+    )
+  ) |> 
+  mutate(across(
+    c(lower, estimate, upper),
+    ~round(., digits = 1)
+  )) |> 
+  
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
+  knitr::kable()
+```
+
+
+
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+
+df_CO_pred <-  
+  tibble(percent_black_or_african_american_alone = seq(
+    min(df_CO$percent_black_or_african_american_alone),
+    max(df_CO$percent_black_or_african_american_alone),
+    length.out = 100
+  ))
+
+df_CO_pred <- 
+  bind_cols(
+    df_CO_pred,
+    predict(
+      model_CO, 
+      interval = 'confidence',
+      newdata = df_CO_pred
+    )
+  )
+
+df_CO_pred |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+  )) +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    fill = "blue",
+    alpha = 1/3
+  ) +
+  geom_line(
+    aes(y = fit),
+    linewidth = 0.7,
+    color = "blue"
+  ) +
+  geom_point(
+    data = df_CO,
+    mapping = aes(y = energy_burden_percentile),
+    size = 0.1
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with percent Black in Colorado?
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+## Florida
+
+In some cases, we may find that gathering more data is simply not possible. Let's suppose that, for some reason, Florida is unwilling to provide all of their energy burden data. Therefore, we must figure out what to do with only $n=25$ observations:
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+set.seed(1)
+
+df_FL <- 
+  df_data |> 
+  filter(state_territory == "Florida") |> 
+  slice_sample(n = 25)
+
+df_FL |> 
+  ggplot(aes(
+    percent_black_or_african_american_alone,
+    energy_burden_percentile)) +
+  geom_point(size = 1.0) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+Given the limited data, we'd expect more uncertainty in our estimates. This will be reflected as a wider confidence interval.
+
+### Study the results
+
+```{r fit-FL}
+#| include: false
+#| echo: false
+#| cache: true
+model_FL <- 
+  lm(
+    data = df_FL,
+    formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  )
+```
+
+
+```{r mle-FL}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+df_model_FL <- 
+  model_FL |> 
+  tidy() |> 
+  mutate(
+    lower = estimate - 2 * std.error,
+    upper = estimate + 2 * std.error,
+  )
+
+df_model_FL |> 
+  select(term, lower, estimate, upper) |> 
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "percent_black_or_african_american_alone" ~ "Slope"
+    )
+  ) |> 
+  mutate(across(
+    c(lower, estimate, upper),
+    ~round(., digits = 1)
+  )) |> 
+  
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
+  knitr::kable()
+```
+
+
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+#| fig-cap: Best fit line and confidence band for Florida data.
+
+df_FL_pred <-  
+  tibble(percent_black_or_african_american_alone = seq(
+    min(df_FL$percent_black_or_african_american_alone),
+    max(df_FL$percent_black_or_african_american_alone),
+    length.out = 100
+  ))
+
+df_FL_pred <- 
+  bind_cols(
+    df_FL_pred,
+    predict(
+      model_FL, 
+      interval = 'confidence',
+      newdata = df_FL_pred
+    )
+  )
+
+df_FL_pred |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+  )) +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    fill = "blue",
+    alpha = 1/3
+  ) +
+  geom_line(
+    aes(y = fit),
+    linewidth = 0.7,
+    color = "blue"
+  ) +
+  geom_point(
+    data = df_FL,
+    mapping = aes(y = energy_burden_percentile),
+    size = 1.0
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with percent Black in Florida?
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+## Full USA
+
+After waiting some time, we finally get access to the full U.S. CEJST dataset.
+
+```{r}
+#| include: false
+#| echo: false
+#| cache: true
+# Random sample of valid observations
+df_USA <- 
+  df_data |> 
+  filter(!is.na(percent_black_or_african_american_alone)) |> 
+  slice_sample(n = 10000)
+```
+
+### Study the results
+
+```{r fit-USA}
+#| include: false
+#| echo: false
+#| cache: true
+model_USA <- 
+  lm(
+    data = df_USA,
+    formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  )
+```
+
+
+```{r mle-USA}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 8
+df_model_USA <- 
+  model_USA |> 
+  tidy() |> 
+  mutate(
+    lower = estimate - 2 * std.error,
+    upper = estimate + 2 * std.error,
+  )
+
+df_model_USA |> 
+  select(term, lower, estimate, upper) |> 
+  mutate(
+    term = case_when(
+      term == "(Intercept)" ~ "Intercept",
+      term == "percent_black_or_african_american_alone" ~ "Slope"
+    )
+  ) |> 
+  mutate(across(
+    c(lower, estimate, upper),
+    ~round(., digits = 1)
+  )) |> 
+  
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
+  knitr::kable()
+```
+
+
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+#| fig-cap: Best fit line and confidence band for full USA data.
+
+df_USA_pred <-  
+  tibble(percent_black_or_african_american_alone = seq(
+    min(df_USA$percent_black_or_african_american_alone),
+    max(df_USA$percent_black_or_african_american_alone),
+    length.out = 100
+  ))
+
+df_USA_pred <- 
+  bind_cols(
+    df_USA_pred,
+    predict(
+      model_USA, 
+      interval = 'confidence',
+      newdata = df_USA_pred
+    )
+  )
+
+df_USA_pred |> 
+
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+  )) +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    fill = "blue",
+    alpha = 1/3
+  ) +
+  geom_line(
+    aes(y = fit),
+    linewidth = 0.7,
+    color = "blue"
+  ) +
+  geom_point(
+    data = df_USA,
+    mapping = aes(y = energy_burden_percentile),
+    size = 1.0
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with percent Black in the full USA?
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+
+# 02b - Bayesian analysis
+
+Armed with all of that background knowledge on the CEJST dataset and on statistical inference, we can proceed with a detailed analysis of the data. In particular, we are interested in assessing the following hypothesis:
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+
+In this part of the session you will interpret results from a statistical model fitted to datasets from different U.S. States.
+
+```{r setup}
+#| include: false
+#| echo: false
+library(rstanarm)
+library(bayesplot)
+library(broom.mixed)
+library(patchwork)
+
+
+mean_Intercept_GLOBAL <- 50
+sd_Intercept_GLOBAL <- 12.5
+```
+
+## Overview
+
+Throughout this activity, you will be studying a statistical model fitted to data from the CEJST dataset. As a reminder, we are interested in the `Energy Burden Percentile` (higher values correspond to a higher burden) and the `Percent Black Census Tract` (which measures the number of people in a region who are Black).
+
+```{r fig-overview}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+df_MA <- 
+  df_data |> 
+  filter(
+    str_detect(state_territory, "Massachusetts"),
+    !is.na(percent_black_or_african_american_alone),
+    !is.na(energy_burden_percentile)
+  ) |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone)
+
+  
+df_MA |> 
+   ggplot(aes(
+    percent_black_or_african_american_alone,
+    energy_burden_percentile
+  )) +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+From this scatterplot, we can see that the energy burden seems to increase as the percent Black increases. However, we can make this rough observation more formal by using a statistical model.
+
+## Analyze a Bayesian Model
+
+To analyze the dataset, we will use the following statistical model,
+
+$$ B = m P + b + \epsilon $$
+
+where $B$ is the energy burden percentile, $P$ is the percent Black, $m$ is the slope parameter, $b$ is the intercept parameter, and $\epsilon$ is a *residual* term that represents factors not accounted in the model. The residual term is assumed to be normally distributed $\epsilon \sim N(0, \sigma^2)$ with an unknown parameter $\sigma^2$. All three parameters have a prior distribution, defined via
+
+$$
+\begin{aligned} m \sim N(\mu_m, \sigma_m^2), \\ b \sim N(\mu_b, \sigma_b^2), \\ \sigma^2 \sim \text{Exponential}(1/s_y), \end{aligned}
+$$
+
+where $m, b, \sigma^2$ are independent.[^1] We will discuss how to set the prior through its parameter values $\mu_m, \mu_b, \sigma_m^2, \sigma_b^2$ later in this activity.
+
+[^1]: Note that $s_y$ is determined based on the standard deviation in the observed data. This is a way of *autoscaling* the prior.
+
+
+```{r fit-MA}
+#| include: false
+#| echo: false
+#| cache: true
+model_MA <- stan_glm(
+  data = df_MA,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Prior model, use the Stan defaults
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+```
+
+## Study the posterior distribution
+
+Results from a Bayesian model take the form of a *posterior distribution* for the model parameters. The model has two parameters that are closely related to our hypothesis: The slope $m$ and intercept $b$ of the fitted line. "Fitting" the Bayesian model to the Massachusetts dataset will result in a posterior distribution for the parameters, with an example posterior given below:
+
+```{r posteriors-MA}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+#| 
+df_model_MA <- 
+  model_MA |>  
+  as_tibble() |>  
+  select(Intercept = `(Intercept)`, Slope = percent_black_or_african_american_alone)
+
+df_model_MA |> 
+  pivot_longer(
+    c(Intercept, Slope),
+    names_to = "parameter",
+    values_to = "x"
+  ) |> 
+  
+  ggplot(aes(x)) +
+  geom_density() +
+  facet_wrap(~parameter) +
+  theme_minimal() +
+  labs(
+    x = "Parameter Value",
+    y = "Density",
+  )
+```
+ The posterior distribution helps us determine **how confident** we should be in conclusions drawn from the model. The next exercise will help you assess confidence in results based on the fitted model.
+
+## Assessing confidence
+
+Let's imagine three different posterior distributions for the posterior (marginal) distribution for the slope parameter $m$.
+
+```{r notional-posteriors}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+tibble(x = seq(-25, +75, length.out = 200)) |> 
+  mutate(
+    d_A = dnorm(x, mean =  1, sd =  5),
+    d_B = dnorm(x, mean = 25, sd = 20),
+    d_C = dnorm(x, mean = 25, sd =  5),
+  ) |> 
+  pivot_longer(
+    cols = contains("d_"),
+    names_sep = "_",
+    names_to = c(".value", "Posterior")
+  ) |> 
+  
+  ggplot(aes(x, d)) +
+  geom_line() +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  facet_grid(~Posterior, labeller = label_both) +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density",
+  )
+```
+
+**Model summaries**
+
+<!-- task-begin -->
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   Roughly, what fraction of *Posterior Distribution A* is greater than zero?
+    -   (Write your response here):
+-   Roughly, what fraction of *Posterior Distribution B* is greater than zero?
+    -   (Write your response here):
+-   Roughly, what fraction of *Posterior Distribution C* is greater than zero?
+    -   (Write your response here):
+-   Which posterior gives the *highest confidence* (*highest
+    probability*) that the slope parameter is positive? How can you tell?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+**General inference**
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   How does the slope parameter relate to our hypothesis? As a reminder, our hypothesis is: 
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).* 
+
+<!-- task-begin -->
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+Let's return to the posterior from our model for the Massachusetts data and use the same reasoning as above to make sense of the results.
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+df_model_MA |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  scale_x_continuous(limits = c(0, 100)) +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density",
+    title = "Posterior Density: Massachusetts Results"
+  )
+```
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+As a reminder, our hypothesis is:
+
+> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+
+<!-- task-begin -->
+-   For Massachusetts, does the fitted model support or contradict our
+    hypothesis? 
+    -   (Write your response here):
+-   How confident are you in the model results?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+## Study the posterior predictions
+
+Bayesian analysis does not produce a "best" line; rather, the posterior distribution implies a *family* of lines (each with a different chance). We call this the *posterior predictive distribution*. For instance, the following visualizes the posterior predictive distribution of lines against the Massachusetts data. This object appears as a "cone" with darker regions corresponding to lines with higher probability (density).
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+
+df_MA |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_MA |> 
+      tidybayes::add_epred_draws(model_MA, ndraws = 1000),
+    aes(y = .epred, group = .draw), 
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue"
+  ) +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+We can use this kind of plot (predictions against observed data) as a way to sanity check the model. You'll do this in the following questions.
+
+::: {.callout-note icon="false" title="Questions for the Class"}
+-   Do all data points (black dots) land near the predicted lines
+    (transparent blue lines), or do some dots land far from the lines?
+    -   (Write your response here):
+-   This model represents the *overall trend* in the data well. In your
+    own words, describe how the model fits the overall trend in the
+    data.
+    -   (Write your response here): 
+:::
+
+The model should fit the data reasonably well; otherwise, we should *distrust* its results. It doesn't matter if the posterior distributions agree with our hypothesis if the model fits the data poorly!
+
+## The Prior Distribution
+
+Above, we glossed over how we arrive at a posterior distribution. In addition to the equation for the line we must also provide a *prior distribution* for the model's parameters. In a Bayesian analysis the prior represents all of our *prior knowledge* about the problem.
+
+For instance, if we were confident that the slope of the Energy Burden vs Percent Black line is positive, we could represent that with a prior distribution that was tightly concentrated at a positive value (Case A below). If we were highly uncertain about the slope, we might represent this case with a prior distribution centered at zero with a very large
+standard deviation (Case B below).
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+slope_mean_A <- +75
+slope_mean_B <- 0
+slope_sd_A <- 5
+slope_sd_B <- 25
+
+df_MA_priors <- 
+  tibble(Slope = seq(-25, 100, length.out = 200)) |> 
+  mutate(
+    d_A = dnorm(Slope, mean = slope_mean_A, sd = slope_sd_A),
+    d_B = dnorm(Slope, mean = slope_mean_B, sd = slope_sd_B),
+  ) |> 
+  pivot_longer(
+    cols = contains("d_"),
+    names_sep = "_",
+    names_to = c(".value", "Case")
+  )
+  
+df_MA_priors |> 
+  ggplot(aes(Slope, d, color = Case)) +
+  geom_line() +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Slope Parameter",
+    y = "Prior Density"
+  )
+```
+
+## Fitting a model: Data + Prior = Posterior
+
+The mathematical details of fitting a Bayesian model are outside the
+scope of this activity. However, the basic "formula" is:
+
+\[ \text{Data} + \text{Model} = \text{Posterior} \]
+
+Note that the Model contains both the formula for the model
+$B = m P + b + \epsilon$ and the prior distribution for the parameters
+$m, b, \sigma^2$. With a small dataset the posterior distribution will
+largely depend on the prior. With a larger dataset, the posterior will
+depend more on the data.
+
+```{r}
+#| include: false
+#| echo: false
+#| cache: true
+model_MA_caseA <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "Massachusetts"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(slope_mean_A, slope_sd_A),
+  # Intercept prior
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_MA_caseB <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "Massachusetts"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(slope_mean_B, slope_sd_B),
+  # Intercept prior
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+```
+
+For instance, the following figure shows what happens when we use two
+different prior distributions for the slope when fitting the
+Massachusetts data:
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+df_model_MA_caseA <- 
+  model_MA_caseA |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  mutate(Case = "A", Distribution = "Posterior")
+
+df_model_MA_caseB <- 
+  model_MA_caseB |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  mutate(Case = "B", Distribution = "Posterior")
+
+bind_rows(df_model_MA_caseA, df_model_MA_caseB) |> 
+  ggplot(aes(Slope, color = Case, linetype = Distribution)) +
+  geom_density() +
+  geom_line(
+    data = df_MA_priors |> mutate(Distribution = "Prior"),
+    mapping = aes(y = d),
+  ) +
+  scale_linetype_manual(
+    values = c(
+      "Prior" = "dashed",
+      "Posterior" = "solid"
+    )) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Parameter Value",
+    y = "Posterior Density",
+  )
+```
+
+Note that the highly uncertain Case B is shifted quite a bit more (from
+prior to posterior) than the Case A results. If we were to obtain a
+larger and larger dataset, using either prior (Case A or B) would
+converge to the same posterior distribution.
+
+```{r prior-MA}
+#| include: false
+#| echo: false
+#| cache: true
+mean_Intercept_MA <- 
+  df_model_MA |> 
+  pull(Intercept) |> 
+  mean()
+mean_Slope_MA <- 
+  df_model_MA |> 
+  pull(Slope) |> 
+  mean()
+
+sd_Intercept_MA <- 
+  df_model_MA |> 
+  pull(Intercept) |> 
+  sd()
+sd_Slope_MA <- 
+  df_model_MA |> 
+  pull(Slope) |> 
+  sd()
+```
+
+```{r fit-MN}
+#| include: false
+#| echo: false
+#| cache: true
+model_MN <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "Minnesota"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Prior model, use the Stan defaults
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+df_model_MN <- 
+  model_MN |> 
+  as_tibble() |> 
+  select(Intercept = `(Intercept)`, Slope = percent_black_or_african_american_alone)
+
+mean_Intercept_MN <- 
+  df_model_MN |> 
+  pull(Intercept) |> 
+  mean()
+mean_Slope_MN <- 
+  df_model_MN |> 
+  pull(Slope) |> 
+  mean()
+
+sd_Intercept_MN <- 
+  df_model_MN |> 
+  pull(Intercept) |> 
+  sd()
+sd_Slope_MN <- 
+  df_model_MN |> 
+  pull(Slope) |> 
+  sd()
+```
+
+```{r fit-NH}
+#| include: false
+#| echo: false
+#| cache: true
+model_NH <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "New Hampshire"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Prior model, use the Stan defaults
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+df_model_NH <- 
+  model_NH |> 
+  as_tibble() |> 
+  select(Intercept = `(Intercept)`, Slope = percent_black_or_african_american_alone)
+
+mean_Intercept_NH <- 
+  df_model_NH |> 
+  pull(Intercept) |> 
+  mean()
+mean_Slope_NH <- 
+  df_model_NH |> 
+  pull(Slope) |> 
+  mean()
+
+sd_Intercept_NH <- 
+  df_model_NH |> 
+  pull(Intercept) |> 
+  sd()
+sd_Slope_NH <- 
+  df_model_NH |> 
+  pull(Slope) |> 
+  sd()
+```
+
+## Three options
+
+Bayesian approaches to statistics are particularly useful when we have limited data, as they allow us to incorporate prior knowledge. For the rest of the activity we'll consider a scenario where our access to the CEJST data is limited: Suppose we are conducting our analysis while the data are actively being gathered. In this case, we may have access to the data for some states before others. In this context, we can conduct a *sequential* Bayesian analysis by using the posterior from one analysis as the prior for a new analysis.
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+tibble(x = seq(-100, 100, length.out = 500)) |> 
+  mutate(
+    d_Slope_MA = dnorm(x, mean = mean_Slope_MA, sd = sd_Slope_MA),
+    d_Slope_MN = dnorm(x, mean = mean_Slope_MN, sd = sd_Slope_MN),
+    d_Slope_NH = dnorm(x, mean = mean_Slope_NH, sd = sd_Slope_NH),
+  ) |> 
+  pivot_longer(
+    cols = contains("d_"),
+    names_sep = "_",
+    names_to = c(".value", "Parameter", "State")
+  ) |> 
+  
+  ggplot(aes(x, d)) +
+  geom_line() +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  facet_grid(. ~ State, scales = "free", labeller = label_both) +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+```
+
+::: {.callout-note icon="false" title="Pick a State"}
+Study the posteriors above carefully; you will use this as a *prior distribution* for the slope for the rest of the activity. This means you will combine *new data* with a *prior distribution* to form a new *posterior distribution* for the model parameters. The *prior distribution* should reflect your beliefs about what you think the slope parameter should be.
+
+Pick *one state for your group*, then come ask the instructor for your chosen state's packet.
+:::
+
+Armed with this fundamental understanding of statistical inference, we can now apply these ideas to study data from the other states!
+
+
+## Colorado
+
+
+## Print CO results
+
+
+```{r}
+#| include: false
+#| echo: false
+#| cache: true
+
+df_CO <- 
+  df_data |> 
+  filter(
+    str_detect(state_territory, "Colorado"),
+    !is.na(percent_black_or_african_american_alone),
+    !is.na(energy_burden_percentile)
+  ) |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone)
+
+
+model_CO_MA <- stan_glm(
+  data = df_CO ,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,  # link function
+  # Slope prior
+  prior = normal(mean_Slope_MA, sd_Slope_MA),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MA, sd_Intercept_MA),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_CO_MN <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "Colorado"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_MN, sd_Slope_MN),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MN, sd_Intercept_MN),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_CO_NH <- stan_glm(
+  data = df_data |> 
+    filter(
+      str_detect(state_territory, "Colorado"),
+      !is.na(percent_black_or_african_american_alone)
+    ),
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_NH, sd_Slope_NH),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_NH, sd_Intercept_NH),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+```
+
+### MA-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+
+p_CO_MA_predict <- 
+  df_CO |> 
+    ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_CO |> 
+      tidybayes::add_epred_draws(model_CO_MA, ndraws = 1000),
+    aes(y = .epred, group = .draw),
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue") +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Colorado, MA-based Prior"
+  )
+
+p_CO_MA_posterior <- 
+  model_CO_MA |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_CO_MA_predict + p_CO_MA_posterior 
+```
+
+### MN-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_CO_MN_predict <- 
+  df_CO |> 
+    ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_CO |> 
+      tidybayes::add_epred_draws(model_CO_MN, ndraws = 1000),
+    aes(y = .epred, group = .draw),
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Colorado, MN-based Prior"
+  )
+
+p_CO_MN_posterior <- 
+  model_CO_MN |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_CO_MN_predict + p_CO_MN_posterior
+```
+
+### NH-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_CO_NH_predict <- 
+  df_CO |> 
+    ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_CO |> 
+      tidybayes::add_epred_draws(model_CO_NH, ndraws = 1000),
+    aes(y = .epred, group = .draw),
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Colorado, NH-based Prior"
+  )
+
+p_CO_NH_posterior <- 
+  model_CO_NH |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_CO_NH_predict + p_CO_NH_posterior 
+```
+
+
+## Study the results
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with percent Black in Colorado? Answer for each prior. 
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+
+## Florida
+
+In some cases, we may find that gathering more data is simply not possible. Let's suppose that, for some reason, Florida is unwilling to provide all of their energy burden data. Therefore, we must figure out what to do with only $n=25$ observations:
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+set.seed(101)
+
+df_fl <- 
+  df_data |> 
+  filter(state_territory == "Florida",
+         !is.na(percent_black_or_african_american_alone),
+         !is.na(energy_burden_percentile)) |> 
+  select(energy_burden_percentile, percent_black_or_african_american_alone) |> 
+  slice_sample(n = 25)
+
+df_fl |> 
+  ggplot(aes(
+    percent_black_or_african_american_alone,
+    energy_burden_percentile
+  )) +
+  geom_point(size = 1.0) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+  )
+```
+
+Given the limited data, our results will depend much more strongly on our prior distribution.
+
+
+## Print FL results
+
+```{r}
+#| include: false
+#| echo: false
+#| cache: true
+model_FL_MA <- stan_glm(
+  data = df_fl,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian, # link function
+  # Slope prior
+  prior = normal(mean_Slope_MA, sd_Slope_MA),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MA, sd_Intercept_MA),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_FL_MN <- stan_glm(
+  data = df_fl,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_MN, sd_Slope_MN),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MN, sd_Intercept_MN),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_FL_NH <- stan_glm(
+  data = df_fl,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_NH, sd_Slope_NH),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_NH, sd_Intercept_NH),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+```
+
+### MA-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_FL_MA_predict <- 
+  df_fl |>
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_fl |> 
+      tidybayes::add_epred_draws(model_FL_MA, ndraws = 1000),
+    aes(y = .epred, group = .draw),
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Florida, MA-based Prior"
+  )
+
+p_FL_MA_posterior <- 
+  model_FL_MA |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_FL_MA_predict + p_FL_MA_posterior 
+```
+
+### MN-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_FL_MN_predict <- 
+  df_fl |> 
+    ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_fl |> 
+      tidybayes::add_epred_draws(model_FL_MN, ndraws = 1000),
+    aes(y = .epred, group = .draw),
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Florida, MN-based Prior"
+  )
+
+p_FL_MN_posterior <- 
+  model_FL_MN |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_FL_MN_predict + p_FL_MN_posterior 
+```
+
+### NH-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_FL_NH_predict <- 
+  df_fl |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_fl |> 
+      tidybayes::add_epred_draws(model_FL_NH, ndraws = 1000),
+    aes(y = .epred, group = .draw), 
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Florida, NH-based Prior"
+  )
+
+p_FL_NH_posterior <- 
+  model_FL_NH |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_FL_NH_predict + p_FL_NH_posterior 
+```
+
+
+## Study the results
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with     percent Black in Florida? Answer for each prior. 
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
+
+## Full USA
+
+After waiting some time, we finally get access to the full U.S. CEJST dataset. With such a large dataset, we expect to see that the results will not depend so much on our choice of prior distribution.
+
+## Print USA Results
+
+Print the following three graphs and place them in envelopes labelled
+for the State-based prior.
+
+```{r}
+#| include: false
+#| echo: false
+#| cache: true
+
+# Random sample of valid observations
+df_USA <- 
+  df_data |> 
+  filter(!is.na(percent_black_or_african_american_alone),
+         !is.na(energy_burden_percentile)) |> 
+    select(energy_burden_percentile, percent_black_or_african_american_alone) |> 
+  slice_sample(n = 10000)
+
+model_USA_MA <- stan_glm(
+  data = df_USA,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_MA, sd_Slope_MA),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MA, sd_Intercept_MA),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_USA_MN <- stan_glm(
+  data = df_USA,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_MN, sd_Slope_MN),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_MN, sd_Intercept_MN),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+
+model_USA_NH <- stan_glm(
+  data = df_USA,
+  # Likelihood model
+  formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
+  family = gaussian,           # link function
+  # Slope prior
+  prior = normal(mean_Slope_NH, sd_Slope_NH),
+  # Intercept prior
+  # prior_intercept = normal(mean_Intercept_NH, sd_Intercept_NH),
+  prior_intercept = normal(mean_Intercept_GLOBAL, sd_Intercept_GLOBAL),
+  # Numerical parameters
+  chains = 4, 
+  iter = 5000*2, # to account for 50% burn-in
+  seed = 84735,  # the BAYES seed!
+  refresh = FALSE
+)
+```
+
+### MA-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_USA_MA_predict <- 
+  df_USA |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_USA |> 
+      tidybayes::add_epred_draws(model_USA_MA, ndraws = 1000),
+    aes(y = .epred, group = .draw), 
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Full USA, MA-based Prior"
+  )
+
+p_USA_MA_posterior <-
+  model_USA_MA |>
+  as_tibble() |>
+  select(Slope = percent_black_or_african_american_alone) |>
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_USA_MA_predict + p_USA_MA_posterior
+```
+
+### MN-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_USA_MN_predict <- 
+  df_USA |>
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_USA |> 
+      tidybayes::add_epred_draws(model_USA_MN, ndraws = 1000),
+    aes(y = .epred, group = .draw), 
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Full USA, MN-based Prior"
+  )
+
+p_USA_MN_posterior <- 
+  model_USA_MN |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_USA_MN_predict + p_USA_MN_posterior 
+```
+
+### NH-based Prior
+
+```{r}
+#| warning: false
+#| echo: false
+#| fig-align: center
+#| fig-height: 3
+p_USA_NH_predict <- 
+  df_USA |> 
+  ggplot(aes(
+    x = percent_black_or_african_american_alone,
+    y = energy_burden_percentile
+  )) +
+  geom_line(
+    data = df_USA |> 
+      tidybayes::add_epred_draws(model_USA_NH, ndraws = 1000),
+    aes(y = .epred, group = .draw), 
+    alpha = 0.01,
+    linewidth = 2.0,
+    color = "blue",
+  ) +
+  geom_point(size = 0.1) +
+  scale_x_continuous(labels = scales::percent) +
+  theme_minimal() +
+  guides(color = "none") +
+  labs(
+    x = "Percent Black Census Tract",
+    y = "Energy Burden Percentile",
+    title = "Full USA, NH-based Prior"
+  )
+
+p_USA_NH_posterior <- 
+  model_USA_NH |> 
+  as_tibble() |> 
+  select(Slope = percent_black_or_african_american_alone) |> 
+  ggplot(aes(Slope)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_density() +
+  theme_minimal() +
+  labs(
+    x = "Slope Parameter",
+    y = "Posterior Density"
+  )
+
+p_USA_NH_predict + p_USA_NH_posterior 
+```
+
+## Study the results
+
+::: {.callout-note icon="false" title="Studying Model Results"}
+<!-- task-begin -->
+-   What does the model suggest about the trend of energy burden with percent Black across the whole U.S.? Answer for each prior. 
+    -   (Write your response here):
+-   How well do the model predictions match the data?
+    -   (Write your response here):
+-   How confident are you in your conclusion?
+    -   (Write your response here): 
+<!-- task-end -->
+:::
