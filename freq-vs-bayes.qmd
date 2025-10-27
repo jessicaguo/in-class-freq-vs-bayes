@@ -6,24 +6,52 @@ editor_options:
 author: 
   - name: Stefani Langehennig
   - name: Zach del Rosario
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
 # 00 - Sustainability Trends Among Disadvantaged Communities
 
-As climate change continues to impact the world in which we live, numerous initiatives have been started to better understand the influence it has on individuals and communities. One of those initiatives stems directly from an Executive Order (EO) issued by President Joe Biden in January 2021. The EO resulted in the Council on Environmental Quality creating a tool by which the public can track various burdens across a number of communities. The primary aim of the tool is identify and subsequently help communities disadvantaged by these burdens in government social programs.
+As climate change continues to impact the world in which we live,
+numerous initiatives have been started to better understand the
+influence it has on individuals and communities. One of those
+initiatives stems directly from an Executive Order (EO) issued by
+President Joe Biden in January 2021. The EO resulted in the Council on
+Environmental Quality creating a tool by which the public can track
+various burdens across a number of communities. The primary aim of the
+tool is identify and subsequently help communities disadvantaged by
+these burdens in government social programs.
 
-[The Climate and Economic Justice Screening Tool](https://screeningtool.geoplatform.gov/en/) (CEJST) is the result of the EO. While the tool established by the Council on Environmental Quality covers a number of burdens (health, transportation, and workforce development, for example), this activity will focus on the sustainability aspects of the tool, including climate change, energy, and legacy pollution burdens on communities.
+[The Climate and Economic Justice Screening
+Tool](https://screeningtool.geoplatform.gov/en/) (CEJST) is the result
+of the EO. While the tool established by the Council on Environmental
+Quality covers a number of burdens (health, transportation, and
+workforce development, for example), this activity will focus on the
+sustainability aspects of the tool, including climate change, energy,
+and legacy pollution burdens on communities.
 
-To set the stage for this activity, we are going to use the CEJST data to explore whether there is a relationship between the energy burden percentile in census tracts and the share of population of Blacks or African-Americans in census tracts. Below, we will explore the dataset, as well as our variables of interest, in-depth.
+To set the stage for this activity, we are going to use the CEJST data
+to explore whether there is a relationship between the energy burden
+percentile in census tracts and the share of population of Blacks or
+African-Americans in census tracts. Below, we will explore the
+datasetand our variables of interest.
 
 ## Dataset
 
-The data used for this analysis comes from the [CEJST website](https://screeningtool.geoplatform.gov/en/downloads). The columns (variables) we are most interested in for better understanding these data are:
+The data used for this analysis comes from the [CEJST
+website](https://screeningtool.geoplatform.gov/en/downloads). The
+columns (variables) we are most interested in for better understanding
+these data are:
 
--   The *energy burden percentile*, which captures the percentile of energy cost as well as energy-related pollution within a census tract.
--   The *percent of African-American or Black alone*, which captures the percent of African-American or Black individuals in a census tract.
+-   The *energy burden percentile*, which captures the percentile of
+    energy cost as well as energy-related pollution within a census
+    tract.
+-   The *percent of African-American or Black alone*, which captures the
+    percent of African-American or Black individuals in a census tract.
 
-First, we will load our data and clean up the variable names using the various packages available to us in the `tidyverse`.
+First, we will load our data and clean up the variable names using the
+various packages available to us in the `tidyverse`.
 
 ```{r}
 #| warning: false
@@ -32,7 +60,6 @@ First, we will load our data and clean up the variable names using the various p
 # Load packages
 library(tidyverse)
 library(janitor)
-library(hexbin)
 library(broom)
 
 # Load CEJST data and create a new dataframe called 'df_raw'
@@ -64,16 +91,33 @@ df_data |>
 
 We will focus on a few columns in this dataset:
 
--   `census_tract_2010_id`: Each row in this dataset corresponds to a *census tract*; this is a small geographic region of the U.S. chosen to represent a consistent number of persons. Census tracts contain about 4000 people, though may contain as few as 1200 and as many as 8000 people.
--   `percent_black_or_african_american_alone`: This reports the percent of people in the census tract who are Black or African American.
--   `energy_burden_percentile`: This reports the **percentile** of energy burden for each census tract. Energy burden is computed as the average annual cost of energy divided by the average household income within the census tract---this is a measure of how "burdened" a household is by energy expenses. A larger energy burden means a household needs to spend more of its income on energy bills.
-    -   The percentile is then computed as the *ordering* of energy burden values for each census tract: The 0th percentile corresponds to the smallest value of energy burden, while the 100th percentile corresponds to the largest value of energy burden.
+-   `census_tract_2010_id`: Each row in this dataset corresponds to a
+    *census tract*; this is a small geographic region of the U.S. chosen
+    to represent a consistent number of persons. Census tracts contain
+    about 4000 people, though may contain as few as 1200 and as many as
+    8000 people.
+-   `percent_black_or_african_american_alone`: This reports the percent
+    of people in the census tract who are Black or African American.
+-   `energy_burden_percentile`: This reports the **percentile** of
+    energy burden for each census tract. Energy burden is computed as
+    the average annual cost of energy divided by the average household
+    income within the census tract---this is a measure of how "burdened"
+    a household is by energy expenses. A larger energy burden means a
+    household needs to spend more of its income on energy bills.
+    -   The percentile is then computed as the *ordering* of energy
+        burden values for each census tract: The 0th percentile
+        corresponds to the smallest value of energy burden, while the
+        100th percentile corresponds to the largest value of energy
+        burden.
 
-Next, let's conduct EDA to better understand our variables of interest, `energy_burden_percentile` and `percent_black_or_african_american_alone`.
+Next, let's conduct EDA to better understand our variables of interest,
+`energy_burden_percentile` and
+`percent_black_or_african_american_alone`.
 
 ## Exploratory Data Analysis (EDA)
 
-To begin, let's subset our data so we can get our descriptive statistics for our variables of interest.
+To begin, let's subset our data so we can get our descriptive statistics
+for our variables of interest.
 
 ```{r}
 # Subset full dataframe 
@@ -86,17 +130,21 @@ glimpse(df_small)
 
 ```
 
-Let's use this subset to get our measures of spread and central tendency.
+Let's use this subset to get our measures of spread and central
+tendency.
 
 ```{r}
 summary(df_small)
 ```
 
 ::: {.callout-note icon="false" title="Synthesizing Descriptive Statistics"}
-What are some take-aways from our descriptive statistics for our variables of interest? Anything concerning or interesting?
+What are some take-aways from our descriptive statistics for our
+variables of interest? Anything concerning or interesting?
 :::
 
-Next, create a plot of the energy burden percentile vs. the % Black census tract to see if there is a negative or positive trend between the two variables.
+Next, create a plot of the energy burden percentile vs. the % Black
+census tract to see if there is a negative or positive trend between the
+two variables.
 
 ```{r}
 #| warning: false
@@ -116,27 +164,59 @@ df_small |>
   theme_minimal()
 ```
 
-As the figure shows, there is a positive relationship between the percent of Black or African-Americans living in a census tract and the energy burden percentile in the respective census tract.
+As the figure shows, there is a positive relationship between the
+percent of Black or African-Americans living in a census tract and the
+energy burden percentile in the respective census tract.
 
 ::: {.callout-note icon="false" title="Visualizing Variables of Interest"}
-What other ways might we choose to visualize our variables of interest? Is there anything else concerning or interesting based on our visualizations?
+What other ways might we choose to visualize our variables of interest?
+Is there anything else concerning or interesting based on our
+visualizations?
 :::
 
 ## Next Steps
 
-We now have a better understanding of sustainability trends among disadvantaged communities using just a few of the variables in the CEJST dataset. Specifically, we explored the relationship between the percent of Black or African-Americans living in a census tract and the energy burden percentile in the census tract. Our high-level exploratory data analysis uncovered a positive relationship: Black or African-Americans that live in a census tract appear to experience a higher energy burden.
+We now have a better understanding of sustainability trends among
+disadvantaged communities using just a few of the variables in the CEJST
+dataset. Specifically, we explored the relationship between the percent
+of Black or African-Americans living in a census tract and the energy
+burden percentile in the census tract. Our high-level exploratory data
+analysis uncovered a positive relationship: Black or African-Americans
+that live in a census tract appear to experience a higher energy burden.
 
 ::: {.callout-note icon="false" title="Other Trends"}
-How might the trend differ by state? Why do you think they will or will not differ from the overall trend observed above?
+How might the trend differ by state? Why do you think they will or will
+not differ from the overall trend observed above?
 :::
 
-With this information in hand, we will use these data, as well as other variables in the CEJST dataset, to formulate hypotheses. We will test our hypotheses in both a frequentist and Bayesian framework, comparing the application of both approaches across the different stages of our analysis with the end goal being general inference.
+With this information in hand, we will use these data, as well as other
+variables in the CEJST dataset, to formulate hypotheses. We will test
+our hypotheses in both a frequentist and Bayesian framework, comparing
+the application of both approaches across the different stages of our
+analysis with the end goal being general inference.
 
 # 01 - Introduction to different statistical paradigms
 
-This activity is all about *statistical inference* and *statistical assumptions*. Both are important when you have data and want to use that data to help you better understand some phenomenon about the world. For example, in section 00, we used the CEJST dataset to understand general trends around sustainability and disadvantaged communities. However, at this point, we have not crafted specific research questions or hypotheses that we would like to rigorously test with the data we have. Nor do we know, with any degree of certainty, how "correct" the trends are that we saw in our data or all the ways that this trend could have occurred.
+This activity is all about *statistical inference* and *statistical
+assumptions*. Both are important when you have data and want to use that
+data to help you better understand some phenomenon about the world. For
+example, in section 00, we used the CEJST dataset to understand general
+trends around sustainability and disadvantaged communities. However, at
+this point, we have not crafted specific research questions or
+hypotheses that we would like to rigorously test with the data we have.
+Nor do we know, with any degree of certainty, how "correct" the trends
+are that we saw in our data or all the ways that this trend could have
+occurred.
 
-There are a few different ways that we can test our hypotheses using methods of statistical inference. Statistical inference allows us to take some data, create a model, and make sense of the complex world around us. Each method has a set of assumptions built into it, which influences the approach you take to answer your research questions, as well as the way you interpret your findings. In the activity that follows, you will have the opportunity to use methods of statistical inference to answer a research question and explain, based on the set of assumptions baked into your approach, your ultimate findings.
+There are a few different ways that we can test our hypotheses using
+methods of statistical inference. Statistical inference allows us to
+take some data, create a model, and make sense of the complex world
+around us. Each method has a set of assumptions built into it, which
+influences the approach you take to answer your research questions, as
+well as the way you interpret your findings. In the activity that
+follows, you will have the opportunity to use methods of statistical
+inference to answer a research question and explain, based on the set of
+assumptions baked into your approach, your ultimate findings.
 
 ## Learning Objectives
 
@@ -144,7 +224,9 @@ By the end of the activity, you should be able to:
 
 1.  Evaluate multiple hypotheses using inferential statistical results
 2.  Connect your evaluation of hypotheses with real-world factors
-3.  State the primary statistical assumptions for Frequentist and Bayesian inference, and understand how they can lead to different conclusions
+3.  State the primary statistical assumptions for Frequentist and
+    Bayesian inference, and understand how they can lead to different
+    conclusions
 
 ## Before We Begin...
 
@@ -152,44 +234,72 @@ Ask yourself the following questions:
 
 ::: {.callout-note icon="false" title="Warmup Questions"}
 -   What do you remember about analyzing a dataset with statistics?
--   What do you know about frequentist and Bayesian statistics? (*Note*: It's okay if you don't know what this means!)
+-   What do you know about frequentist and Bayesian statistics? (*Note*:
+    It's okay if you don't know what this means!)
 :::
 
 Discuss these questions with the people around you.
 
 ## The Big Idea: Inference
 
-Statistical inference is drawing conclusions about **data we haven't seen** using **only the data that are available.** As a simple example, if we're interested in the energy burden pattern in Colorado but we only have data from Massachusetts, we should be careful when trying to use the MA data to predict patterns in CO. Crucially, **the assumptions we make for inference will strongly affect the conclusions we make.**
+Statistical inference is drawing conclusions about **data we haven't
+seen** using **only the data that are available.** As a simple example,
+if we're interested in the energy burden pattern in Colorado but we only
+have data from Massachusetts, we should be careful when trying to use
+the MA data to predict patterns in CO. Crucially, **the assumptions we
+make for inference will strongly affect the conclusions we make.**
 
 ::: {.callout-note icon="false" title="All models are wrong...."}
-All statistical analyses involve making assumptions---we'll practice making and assessing statistical assumptions in this activity.
+All statistical analyses involve making assumptions---we'll practice
+making and assessing statistical assumptions in this activity.
 :::
 
 ## Crafting Research Questions & Hypotheses
 
-Ahead of using data and statistical inference, we usually create theory-based *research questions* and *hypotheses* that help guide what we expect to find. Both are focused on an aspect of the world that we want to know more about. However, research questions tend to be open-ended, allowing for discussion on what the outcome might be and what might explain it. For example, a research question about sustainability and diverse communities may look like this:
+Ahead of using data and statistical inference, we usually create
+theory-based *research questions* and *hypotheses* that help guide what
+we expect to find. Both are focused on an aspect of the world that we
+want to know more about. However, research questions tend to be
+open-ended, allowing for discussion on what the outcome might be and
+what might explain it. For example, a research question about
+sustainability and diverse communities may look like this:
 
-> *Why does the projected flood risk vary among different communities in U.S. Census tracts?*
+> *Why does the projected flood risk vary among different communities in
+> U.S. Census tracts?*
 
-Hypotheses, on the other hand, tend to be closed-ended, articulating a certain relationship between an outcome and the things that influence that outcome. For example, one of the testable hypotheses stemming from the research question on projected flood risk may be:
+Hypotheses, on the other hand, tend to be closed-ended, articulating a
+certain relationship between an outcome and the things that influence
+that outcome. For example, one of the testable hypotheses stemming from
+the research question on projected flood risk may be:
 
-> *As the population density of Hispanic communities increases (decreases), the projected flood risk increases (decreases).*
+> *As the population density of Hispanic communities increases
+> (decreases), the projected flood risk increases (decreases).*
 
-Note that this hypothesis is succinct and testable with the data we have. It is also directly related to our more general research question.
+Note that this hypothesis is succinct and testable with the data we
+have. It is also directly related to our more general research question.
 
 ## Paradigms in Statistical Inference
 
-There are a few different ways to draw conclusions about questions we have using data. We will focus on two inferential perspectives in this class: *Frequentist* and *Bayesian*. For this activity, we will discuss these differences in the context of **general inference** and **model summaries**.
+There are a few different ways to draw conclusions about questions we
+have using data. We will focus on two inferential perspectives in this
+class: *Frequentist* and *Bayesian*. For this activity, we will discuss
+these differences in the context of **general inference** and **model
+summaries**.
 
-For general inference, we are concerned with answering questions about a *larger* dataset, while only having access to a *smaller* dataset. We do this by:
+For general inference, we are concerned with answering questions about a
+*larger* dataset, while only having access to a *smaller* dataset. We do
+this by:
 
-1.  Translating our question into a mathematical model, which requires assumptions
+1.  Translating our question into a mathematical model, which requires
+    assumptions
 2.  Fitting the model using data
 3.  Interpreting model results in terms of our question
 
-After we have done the general inference steps above, we must think about how to translate what we have done and what we have found.
+After we have done the general inference steps above, we must think
+about how to translate what we have done and what we have found.
 
--   Statistical models are complex objects, so we use *model summaries* to help.
+-   Statistical models are complex objects, so we use *model summaries*
+    to help.
 -   Statistical models represent the *uncertainty due to limited data*.
 
 Some common summaries we use:
@@ -198,38 +308,51 @@ Some common summaries we use:
 |----------------|-------------|-------------------------|
 | 42             | 4           | (42 +/- 2x4) = (34, 50) |
 
-: Common Model Summaries {.sm .bordered}
-
 ::: {.callout-note icon="false" title="Stay Tuned!"}
-Note that we haven't talked about frequentist or Bayesian statistics yet! We'll get there later in the activity....
+Note that we haven't talked about frequentist or Bayesian statistics
+yet! We'll get there later in the activity....
 
-You can read more about the statistical inference in [03 One Page Summary](https://github.com/bayes-bats/tier2-freq-bayes/blob/main/development/03-simplified-main.qmd).
+You can read more about the statistical inference in [03 One Page
+Summary](https://github.com/bayes-bats/tier2-freq-bayes/blob/main/development/03-simplified-main.qmd).
 :::
 
 ## Next Steps
 
-Given the context we have on sustainability trends among disadvantaged communities using just a few of the variables in the CEJST dataset, we can develop a research question and hypotheses to test using methods of statistical inference:
+Given the context we have on sustainability trends among disadvantaged
+communities using just a few of the variables in the CEJST dataset, we
+can develop a research question and hypotheses to test using methods of
+statistical inference:
 
 **Research Question:**
 
-> *Do Black Americans experience a disproportionate level of energy expenditure?*
+> *Do Black Americans experience a disproportionate level of energy
+> expenditure?*
 
 **Hypothesis:**
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
 # 02a - Frequentist analysis
 
-Armed with all of that background knowledge on the CEJST dataset and on statistical inference, we can proceed with a detailed analysis of the data. In particular, we are interested in assessing the following hypothesis:
+Armed with all of that background knowledge on the CEJST dataset and on
+statistical inference, we can proceed with a detailed analysis of the
+data. In particular, we are interested in assessing the following
+hypothesis:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
-In this part of the session you will interpret results from a statistical model fitted to datasets from different U.S. States.
+In this part of the session you will interpret results from a
+statistical model fitted to datasets from different U.S. States.
 
 ## Overview
 
-Throughout this activity, you will be studying a statistical model fitted to data from the CEJST dataset. As a reminder, we are interested in the `Energy Burden Percentile` (higher values correspond to a higher burden) and the `Percent Black Census Tract` (which measures the number of people in a region who are Black).
-
+Throughout this activity, you will be studying a statistical model
+fitted to data from the CEJST dataset. As a reminder, we are interested
+in the `Energy Burden Percentile` (higher values correspond to a higher
+burden) and the `Percent Black Census Tract` (which measures the number
+of people in a region who are Black).
 
 ```{r fig-overview}
 #| warning: false
@@ -275,26 +398,35 @@ is a *residual* term that represents factors not accounted in the model.
 The residual term is assumed to be normally distributed
 $\epsilon \sim N(0, \sigma^2)$ with an unknown parameter $\sigma^2$.
 
-
 ```{r fit-MA}
 #| include: false
 #| echo: false
 
+# Create a linear model
 model_MA <- 
-  lm(formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
-     data = df_MA)
+  lm(formula = 
+     data = )
 ```
 
 ## Study the MLE estimates
 
-Results from a Frequentist model take the form of a *maximum likelihood estimates* for the model parameters. The model has two parameters that are closely related to our hypothesis: The slope $m$ and intercept $b$ of the fitted line. "Fitting" the Frequentist model to the Massachusetts dataset will result in point estimate ("best fit") values for the parameters and a *confidence interval* for each estimate. The point estimates and confidence intervals from fitting the Massachusetts data are shown below:
+Results from a Frequentist model take the form of a *maximum likelihood
+estimates* for the model parameters. The model has two parameters that
+are closely related to our hypothesis: The slope $m$ and intercept $b$
+of the fitted line. "Fitting" the Frequentist model to the Massachusetts
+dataset will result in point estimate ("best fit") values for the
+parameters and a *confidence interval* for each estimate. The point
+estimates and confidence intervals from fitting the Massachusetts data
+are shown below:
 
 ```{r mle-MA}
 #| warning: false
 #| echo: false
 #| fig-align: center
 #| fig-height: 8
-#| 
+
+
+# Why is 2 the "magic number" used here to create the confidence interval?
 df_model_MA <- 
   model_MA |> 
   tidy() |> 
@@ -315,27 +447,30 @@ df_model_MA |>
     c(lower, estimate, upper),
     ~round(., digits = 1)
   )) |> 
-  
-  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
-  knitr::kable()
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) 
 ```
 
-A confidence interval helps us determine **how confident** we should be in conclusions drawn from the model. The next exercise will help you assess confidence in results based on the fitted model.
+A confidence interval helps us determine **how confident** we should be
+in conclusions drawn from the model. The next exercise will help you
+assess confidence in results based on the fitted model.
 
 ## Assessing confidence
 
-Let's imagine three different posterior sets of point estimates and confidence intervals for the slope parameter $m$:
+Let's imagine three different posterior sets of point estimates and
+confidence intervals for the slope parameter $m$:
 
 | **Case** | **Lower** | **Estimate** | **Upper** |
 |----------|-----------|--------------|-----------|
-|    A     |   -10     |      60      |    100    |
-|    B     |    -5     |       5      |     15    |
-|    C     |    25     |      50      |     75    |
+| A        | -10       | 60           | 100       |
+| B        | -5        | 5            | 15        |
+| C        | 25        | 50           | 75        |
 
-The most important thing to remember about confidence intervals is the *golden rule*....
+The most important thing to remember about confidence intervals is the
+*golden rule*....
 
 ::: {.callout-note icon="false" title="Golden Rule for Confidence Intervals"}
-When studying a confidence interval, we should assume the value we are trying to estimate could be **anywhere** inside the interval.
+When studying a confidence interval, we should assume the value we are
+trying to estimate could be **anywhere** inside the interval.
 :::
 
 **Model summaries**
@@ -344,39 +479,38 @@ When studying a confidence interval, we should assume the value we are trying to
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
 -   Which case (A, B, or C) gives the *highest* point estimate?
-    -   (Write your response here): 
--   Which cases (A, B, or C) include $0$ between their `Lower` and `Upper` values?
-    -   (Write your response here): 
--   Which case (A, B, or C) has the *narrowest* confidence interval? (i.e., the difference between `Upper - Lower` is smallest)
-    -   (Write your response here): 
--   Which case suggests the *highest confidence* that the slope parameter is positive? How can you tell?
-    -   (Write your response here): 
-<!-- task-end -->
-<!-- solution-begin -->
--   Which case (A, B, or C) gives the *highest* point estimate?
-    -   Case A
--   Which cases (A, B, or C) include $0$ between their `Lower` and `Upper` values?
-    -   Cases A and B
--   Which case (A, B, or C) has the *narrowest* confidence interval? (i.e., the difference between `Upper - Lower` is smallest)
-    -   Case B
--   Which case suggests the *highest confidence* that the slope parameter is positive? How can you tell?
-    -   Case C; it is the only CI that excludes zero.
-<!-- solution-end -->
+    -   (Write your response here):
+-   Which cases (A, B, or C) include $0$ between their `Lower` and
+    `Upper` values?
+    -   (Write your response here):
+-   Which case (A, B, or C) has the *narrowest* confidence interval?
+    (i.e., the difference between `Upper - Lower` is smallest)
+    -   (Write your response here):
+-   Which case suggests the *highest confidence* that the slope
+    parameter is positive? How can you tell?
+    -   (Write your response here): <!-- task-end -->
 :::
 
 **General inference**
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
--   How does the slope parameter relate to our hypothesis? As a reminder, our hypothesis is: 
+-   How does the slope parameter relate to our hypothesis? As a
+    reminder, our hypothesis is:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).* 
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
 <!-- task-begin -->
-    -   (Write your response here): 
+
+```         
+-   (Write your response here): 
+```
+
 <!-- task-end -->
 :::
 
-Let's return to the posterior from our model for the Massachusetts data and use the same reasoning as above to make sense of the results.
+Let's return to the posterior from our model for the Massachusetts data
+and use the same reasoning as above to make sense of the results.
 
 ```{r mle-MA-repeat}
 #| warning: false
@@ -394,28 +528,33 @@ df_model_MA |>
     c(lower, estimate, upper),
     ~round(., digits = 1)
   )) |> 
-  
-  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
-  knitr::kable()
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper)
 ```
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
 As a reminder, our hypothesis is:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
 <!-- task-begin -->
+
 -   For Massachusetts, does the fitted model support or contradict our
-    hypothesis? 
+    hypothesis?
     -   (Write your response here):
 -   How confident are you in the model results?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
 
 ## Study the prediction and confidence band
 
-Frequentist analysis produces a "best fit" line, but the confidence intervals on the slope and intercept imply a *family* of lines. We call this the *confidence band* for the regression line. For instance, the following visualizes the best fit line (solid blue) and confidence band (transparent blue) against the Massachusetts data. Practically, the confidence band tells us that any line we can draw within the bounds is *compatible* with the data we have.
+Frequentist analysis produces a "best fit" line, but the confidence
+intervals on the slope and intercept imply a *family* of lines. We call
+this the *confidence band* for the regression line. For instance, the
+following visualizes the best fit line (solid blue) and confidence band
+(transparent blue) against the Massachusetts data. Practically, the
+confidence band tells us that any line we can draw within the bounds is
+*compatible* with the data we have.
 
 ```{r}
 #| warning: false
@@ -470,22 +609,35 @@ df_MA_pred |>
   )
 ```
 
-We can use this kind of plot (predictions against observed data) as a way to sanity check the model. You'll do this in the following questions.
+We can use this kind of plot (predictions against observed data) as a
+way to sanity check the model. You'll do this in the following
+questions.
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
--   Do all data points (black dots) land near the best fit line (solid blue line), or do some dots land far from the line?
+-   Do all data points (black dots) land near the best fit line (solid
+    blue line), or do some dots land far from the line?
     -   (Write your response here):
--   This model represents the *overall trend* in the data well. In your own words, describe how the model fits the overall trend in the data.
-    -   (Write your response here): 
+-   This model represents the *overall trend* in the data well. In your
+    own words, describe how the model fits the overall trend in the
+    data.
+    -   (Write your response here):
 :::
 
-The model should fit the data reasonably well; otherwise, we should *distrust* its results. It doesn't matter if the MLE estimates agree with our hypothesis if the model fits the data poorly!
+The model should fit the data reasonably well; otherwise, we should
+*distrust* its results. It doesn't matter if the MLE estimates agree
+with our hypothesis if the model fits the data poorly!
 
 ## Data rollout
 
-For the rest of the activity we'll consider a scenario where our access to the CEJST data is limited: Suppose we are conducting our analysis while the data are actively being gathered. In this case, we may have access to the data for some states before others. In this context, this means we'll study some of the individual states before we study the full USA.
+For the rest of the activity we'll consider a scenario where our access
+to the CEJST data is limited: Suppose we are conducting our analysis
+while the data are actively being gathered. In this case, we may have
+access to the data for some states before others. In this context, this
+means we'll study some of the individual states before we study the full
+USA.
 
-Armed with this fundamental understanding of statistical inference, we can now apply these ideas to study data from the other states!
+Armed with this fundamental understanding of statistical inference, we
+can now apply these ideas to study data from the other states!
 
 ## Colorado
 
@@ -537,12 +689,8 @@ df_model_CO |>
     ~round(., digits = 1)
   )) |> 
   
-  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
-  knitr::kable()
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper)
 ```
-
-
-
 
 ```{r}
 #| warning: false
@@ -597,18 +745,22 @@ df_CO_pred |>
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with percent Black in Colorado?
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black in Colorado?
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
 
 ## Florida
 
-In some cases, we may find that gathering more data is simply not possible. Let's suppose that, for some reason, Florida is unwilling to provide all of their energy burden data. Therefore, we must figure out what to do with only $n=25$ observations:
+In some cases, we may find that gathering more data is simply not
+possible. Let's suppose that, for some reason, Florida is unwilling to
+provide all of their energy burden data. Therefore, we must figure out
+what to do with only $n=25$ observations:
 
 ```{r}
 #| warning: false
@@ -635,7 +787,8 @@ df_FL |>
   )
 ```
 
-Given the limited data, we'd expect more uncertainty in our estimates. This will be reflected as a wider confidence interval.
+Given the limited data, we'd expect more uncertainty in our estimates.
+This will be reflected as a wider confidence interval.
 
 ### Study the results
 
@@ -649,7 +802,6 @@ model_FL <-
     formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
   )
 ```
-
 
 ```{r mle-FL}
 #| warning: false
@@ -676,12 +828,8 @@ df_model_FL |>
     c(lower, estimate, upper),
     ~round(., digits = 1)
   )) |> 
-  
-  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
-  knitr::kable()
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper)
 ```
-
-
 
 ```{r}
 #| warning: false
@@ -736,18 +884,20 @@ df_FL_pred |>
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with percent Black in Florida?
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black in Florida?
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
 
 ## Full USA
 
-After waiting some time, we finally get access to the full U.S. CEJST dataset.
+After waiting some time, we finally get access to the full U.S. CEJST
+dataset.
 
 ```{r}
 #| include: false
@@ -772,7 +922,6 @@ model_USA <-
     formula = energy_burden_percentile ~ percent_black_or_african_american_alone,
   )
 ```
-
 
 ```{r mle-USA}
 #| warning: false
@@ -799,12 +948,8 @@ df_model_USA |>
     c(lower, estimate, upper),
     ~round(., digits = 1)
   )) |> 
-  
-  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper) |> 
-  knitr::kable()
+  select(Term = term, Lower = lower, Estimate = estimate, Upper = upper)
 ```
-
-
 
 ```{r}
 #| warning: false
@@ -860,23 +1005,28 @@ df_USA_pred |>
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with percent Black in the full USA?
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black in the full USA?
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
-
 
 # 02b - Bayesian analysis
 
-Armed with all of that background knowledge on the CEJST dataset and on statistical inference, we can proceed with a detailed analysis of the data. In particular, we are interested in assessing the following hypothesis:
+Armed with all of that background knowledge on the CEJST dataset and on
+statistical inference, we can proceed with a detailed analysis of the
+data. In particular, we are interested in assessing the following
+hypothesis:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
-In this part of the session you will interpret results from a statistical model fitted to datasets from different U.S. States.
+In this part of the session you will interpret results from a
+statistical model fitted to datasets from different U.S. States.
 
 ```{r setup}
 #| include: false
@@ -893,7 +1043,11 @@ sd_Intercept_GLOBAL <- 12.5
 
 ## Overview
 
-Throughout this activity, you will be studying a statistical model fitted to data from the CEJST dataset. As a reminder, we are interested in the `Energy Burden Percentile` (higher values correspond to a higher burden) and the `Percent Black Census Tract` (which measures the number of people in a region who are Black).
+Throughout this activity, you will be studying a statistical model
+fitted to data from the CEJST dataset. As a reminder, we are interested
+in the `Energy Burden Percentile` (higher values correspond to a higher
+burden) and the `Percent Black Census Tract` (which measures the number
+of people in a region who are Black).
 
 ```{r fig-overview}
 #| warning: false
@@ -925,7 +1079,9 @@ df_MA |>
   )
 ```
 
-From this scatterplot, we can see that the energy burden seems to increase as the percent Black increases. However, we can make this rough observation more formal by using a statistical model.
+From this scatterplot, we can see that the energy burden seems to
+increase as the percent Black increases. However, we can make this rough
+observation more formal by using a statistical model.
 
 ## Analyze a Bayesian Model
 
@@ -933,21 +1089,32 @@ To analyze the dataset, we will use the following statistical model,
 
 $$ B = m P + b + \epsilon $$
 
-where $B$ is the energy burden percentile, $P$ is the percent Black, $m$ is the slope parameter, $b$ is the intercept parameter, and $\epsilon$ is a *residual* term that represents factors not accounted in the model. The residual term is assumed to be normally distributed $\epsilon \sim N(0, \sigma^2)$ with an unknown parameter $\sigma^2$. All three parameters have a prior distribution, defined via
+where $B$ is the energy burden percentile, $P$ is the percent Black, $m$
+is the slope parameter, $b$ is the intercept parameter, and $\epsilon$
+is a *residual* term that represents factors not accounted in the model.
+The residual term is assumed to be normally distributed
+$\epsilon \sim N(0, \sigma^2)$ with an unknown parameter $\sigma^2$. All
+three parameters have a prior distribution, defined via
 
 $$
 \begin{aligned} m \sim N(\mu_m, \sigma_m^2), \\ b \sim N(\mu_b, \sigma_b^2), \\ \sigma^2 \sim \text{Exponential}(1/s_y), \end{aligned}
 $$
 
-where $m, b, \sigma^2$ are independent.[^1] We will discuss how to set the prior through its parameter values $\mu_m, \mu_b, \sigma_m^2, \sigma_b^2$ later in this activity.
+where $m, b, \sigma^2$ are independent.[^1] We will discuss how to set
+the prior through its parameter values
+$\mu_m, \mu_b, \sigma_m^2, \sigma_b^2$ later in this activity.
 
-[^1]: Note that $s_y$ is determined based on the standard deviation in the observed data. This is a way of *autoscaling* the prior.
-
+[^1]: Note that $s_y$ is determined based on the standard deviation in
+    the observed data. This is a way of *autoscaling* the prior.
 
 ```{r fit-MA}
 #| include: false
 #| echo: false
 #| cache: true
+
+# This will take a couple of seconds to run
+# How do the arguments of stan_glm() differ from those of lm()?
+# Ask questions if you're unsure!
 model_MA <- stan_glm(
   data = df_MA,
   # Likelihood model
@@ -964,7 +1131,12 @@ model_MA <- stan_glm(
 
 ## Study the posterior distribution
 
-Results from a Bayesian model take the form of a *posterior distribution* for the model parameters. The model has two parameters that are closely related to our hypothesis: The slope $m$ and intercept $b$ of the fitted line. "Fitting" the Bayesian model to the Massachusetts dataset will result in a posterior distribution for the parameters, with an example posterior given below:
+Results from a Bayesian model take the form of a *posterior
+distribution* for the model parameters. The model has two parameters
+that are closely related to our hypothesis: The slope $m$ and intercept
+$b$ of the fitted line. "Fitting" the Bayesian model to the
+Massachusetts dataset will result in a posterior distribution for the
+parameters, with an example posterior given below:
 
 ```{r posteriors-MA}
 #| warning: false
@@ -993,11 +1165,15 @@ df_model_MA |>
     y = "Density",
   )
 ```
- The posterior distribution helps us determine **how confident** we should be in conclusions drawn from the model. The next exercise will help you assess confidence in results based on the fitted model.
+
+The posterior distribution helps us determine **how confident** we
+should be in conclusions drawn from the model. The next exercise will
+help you assess confidence in results based on the fitted model.
 
 ## Assessing confidence
 
-Let's imagine three different posterior distributions for the posterior (marginal) distribution for the slope parameter $m$.
+Let's imagine three different posterior distributions for the posterior
+(marginal) distribution for the slope parameter $m$.
 
 ```{r notional-posteriors}
 #| warning: false
@@ -1024,8 +1200,7 @@ tibble(x = seq(-25, +75, length.out = 200)) |>
   theme_minimal() +
   labs(
     x = "Slope Parameter",
-    y = "Posterior Density",
-  )
+    y = "Posterior Density")
 ```
 
 **Model summaries**
@@ -1033,31 +1208,41 @@ tibble(x = seq(-25, +75, length.out = 200)) |>
 <!-- task-begin -->
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
--   Roughly, what fraction of *Posterior Distribution A* is greater than zero?
+-   Roughly, what fraction of *Posterior Distribution A* is greater than
+    zero?
     -   (Write your response here):
--   Roughly, what fraction of *Posterior Distribution B* is greater than zero?
+-   Roughly, what fraction of *Posterior Distribution B* is greater than
+    zero?
     -   (Write your response here):
--   Roughly, what fraction of *Posterior Distribution C* is greater than zero?
+-   Roughly, what fraction of *Posterior Distribution C* is greater than
+    zero?
     -   (Write your response here):
 -   Which posterior gives the *highest confidence* (*highest
-    probability*) that the slope parameter is positive? How can you tell?
-    -   (Write your response here): 
-<!-- task-end -->
+    probability*) that the slope parameter is positive? How can you
+    tell?
+    -   (Write your response here): <!-- task-end -->
 :::
 
 **General inference**
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
--   How does the slope parameter relate to our hypothesis? As a reminder, our hypothesis is: 
+-   How does the slope parameter relate to our hypothesis? As a
+    reminder, our hypothesis is:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).* 
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
 <!-- task-begin -->
-    -   (Write your response here): 
+
+```         
+-   (Write your response here): 
+```
+
 <!-- task-end -->
 :::
 
-Let's return to the posterior from our model for the Massachusetts data and use the same reasoning as above to make sense of the results.
+Let's return to the posterior from our model for the Massachusetts data
+and use the same reasoning as above to make sense of the results.
 
 ```{r}
 #| warning: false
@@ -1081,20 +1266,26 @@ df_model_MA |>
 ::: {.callout-note icon="false" title="Questions for the Class"}
 As a reminder, our hypothesis is:
 
-> *As the population of Black Americans increases (decreases), the level of energy expenditure increases (decreases).*
+> *As the population of Black Americans increases (decreases), the level
+> of energy expenditure increases (decreases).*
 
 <!-- task-begin -->
+
 -   For Massachusetts, does the fitted model support or contradict our
-    hypothesis? 
+    hypothesis?
     -   (Write your response here):
 -   How confident are you in the model results?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
 
 ## Study the posterior predictions
 
-Bayesian analysis does not produce a "best" line; rather, the posterior distribution implies a *family* of lines (each with a different chance). We call this the *posterior predictive distribution*. For instance, the following visualizes the posterior predictive distribution of lines against the Massachusetts data. This object appears as a "cone" with darker regions corresponding to lines with higher probability (density).
+Bayesian analysis does not produce a "best" line; rather, the posterior
+distribution implies a *family* of lines (each with a different chance).
+We call this the *posterior predictive distribution*. For instance, the
+following visualizes the posterior predictive distribution of lines
+against the Massachusetts data. This object appears as a "cone" with
+darker regions corresponding to lines with higher probability (density).
 
 ```{r}
 #| warning: false
@@ -1102,7 +1293,7 @@ Bayesian analysis does not produce a "best" line; rather, the posterior distribu
 #| fig-align: center
 #| fig-height: 3
 
-
+# What does the function add_epred_draws() do?
 df_MA |> 
   ggplot(aes(
     x = percent_black_or_african_american_alone,
@@ -1125,7 +1316,9 @@ df_MA |>
   )
 ```
 
-We can use this kind of plot (predictions against observed data) as a way to sanity check the model. You'll do this in the following questions.
+We can use this kind of plot (predictions against observed data) as a
+way to sanity check the model. You'll do this in the following
+questions.
 
 ::: {.callout-note icon="false" title="Questions for the Class"}
 -   Do all data points (black dots) land near the predicted lines
@@ -1134,16 +1327,25 @@ We can use this kind of plot (predictions against observed data) as a way to san
 -   This model represents the *overall trend* in the data well. In your
     own words, describe how the model fits the overall trend in the
     data.
-    -   (Write your response here): 
+    -   (Write your response here):
 :::
 
-The model should fit the data reasonably well; otherwise, we should *distrust* its results. It doesn't matter if the posterior distributions agree with our hypothesis if the model fits the data poorly!
+The model should fit the data reasonably well; otherwise, we should
+*distrust* its results. It doesn't matter if the posterior distributions
+agree with our hypothesis if the model fits the data poorly!
 
 ## The Prior Distribution
 
-Above, we glossed over how we arrive at a posterior distribution. In addition to the equation for the line we must also provide a *prior distribution* for the model's parameters. In a Bayesian analysis the prior represents all of our *prior knowledge* about the problem.
+Above, we glossed over how we arrive at a posterior distribution. In
+addition to the equation for the line we must also provide a *prior
+distribution* for the model's parameters. In a Bayesian analysis the
+prior represents all of our *prior knowledge* about the problem.
 
-For instance, if we were confident that the slope of the Energy Burden vs Percent Black line is positive, we could represent that with a prior distribution that was tightly concentrated at a positive value (Case A below). If we were highly uncertain about the slope, we might represent this case with a prior distribution centered at zero with a very large
+For instance, if we were confident that the slope of the Energy Burden
+vs Percent Black line is positive, we could represent that with a prior
+distribution that was tightly concentrated at a positive value (Case A
+below). If we were highly uncertain about the slope, we might represent
+this case with a prior distribution centered at zero with a very large
 standard deviation (Case B below).
 
 ```{r}
@@ -1196,6 +1398,7 @@ depend more on the data.
 #| include: false
 #| echo: false
 #| cache: true
+
 model_MA_caseA <- stan_glm(
   data = df_data |> 
     filter(
@@ -1246,6 +1449,7 @@ Massachusetts data:
 #| echo: false
 #| fig-align: center
 #| fig-height: 3
+
 df_model_MA_caseA <- 
   model_MA_caseA |> 
   as_tibble() |> 
@@ -1260,22 +1464,18 @@ df_model_MA_caseB <-
 
 bind_rows(df_model_MA_caseA, df_model_MA_caseB) |> 
   ggplot(aes(Slope, color = Case, linetype = Distribution)) +
-  geom_density() +
+  geom_density(show.legend = FALSE) +
   geom_line(
     data = df_MA_priors |> mutate(Distribution = "Prior"),
-    mapping = aes(y = d),
-  ) +
-  scale_linetype_manual(
-    values = c(
-      "Prior" = "dashed",
-      "Posterior" = "solid"
-    )) +
+    mapping = aes(y = d)) +
+  scale_linetype_manual(values = c("Prior" = "dashed",
+                                   "Posterior" = "solid")) +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(
     x = "Parameter Value",
-    y = "Posterior Density",
-  )
+    y = "Posterior Density") +
+  guides(linetype = guide_legend(override.aes = list(linetype = c("solid", "dashed"))))
 ```
 
 Note that the highly uncertain Case B is shifted quite a bit more (from
@@ -1398,13 +1598,21 @@ sd_Slope_NH <-
 
 ## Three options
 
-Bayesian approaches to statistics are particularly useful when we have limited data, as they allow us to incorporate prior knowledge. For the rest of the activity we'll consider a scenario where our access to the CEJST data is limited: Suppose we are conducting our analysis while the data are actively being gathered. In this case, we may have access to the data for some states before others. In this context, we can conduct a *sequential* Bayesian analysis by using the posterior from one analysis as the prior for a new analysis.
+Bayesian approaches to statistics are particularly useful when we have
+limited data, as they allow us to incorporate prior knowledge. For the
+rest of the activity we'll consider a scenario where our access to the
+CEJST data is limited: Suppose we are conducting our analysis while the
+data are actively being gathered. In this case, we may have access to
+the data for some states before others. In this context, we can conduct
+a *sequential* Bayesian analysis by using the posterior from one
+analysis as the prior for a new analysis.
 
 ```{r}
 #| warning: false
 #| echo: false
 #| fig-align: center
 #| fig-height: 3
+
 tibble(x = seq(-100, 100, length.out = 500)) |> 
   mutate(
     d_Slope_MA = dnorm(x, mean = mean_Slope_MA, sd = sd_Slope_MA),
@@ -1429,19 +1637,23 @@ tibble(x = seq(-100, 100, length.out = 500)) |>
 ```
 
 ::: {.callout-note icon="false" title="Pick a State"}
-Study the posteriors above carefully; you will use this as a *prior distribution* for the slope for the rest of the activity. This means you will combine *new data* with a *prior distribution* to form a new *posterior distribution* for the model parameters. The *prior distribution* should reflect your beliefs about what you think the slope parameter should be.
+Study the posteriors above carefully; you will use this as a *prior
+distribution* for the slope for the rest of the activity. This means you
+will combine *new data* with a *prior distribution* to form a new
+*posterior distribution* for the model parameters. The *prior
+distribution* should reflect your beliefs about what you think the slope
+parameter should be.
 
-Pick *one state for your group*, then come ask the instructor for your chosen state's packet.
+Pick *one state for your group*, then come ask the instructor for your
+chosen state's packet.
 :::
 
-Armed with this fundamental understanding of statistical inference, we can now apply these ideas to study data from the other states!
-
+Armed with this fundamental understanding of statistical inference, we
+can now apply these ideas to study data from the other states!
 
 ## Colorado
 
-
 ## Print CO results
-
 
 ```{r}
 #| include: false
@@ -1661,24 +1873,26 @@ p_CO_NH_posterior <-
 p_CO_NH_predict + p_CO_NH_posterior 
 ```
 
-
 ## Study the results
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with percent Black in Colorado? Answer for each prior. 
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black in Colorado? Answer for each prior.
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
-
 
 ## Florida
 
-In some cases, we may find that gathering more data is simply not possible. Let's suppose that, for some reason, Florida is unwilling to provide all of their energy burden data. Therefore, we must figure out what to do with only $n=25$ observations:
+In some cases, we may find that gathering more data is simply not
+possible. Let's suppose that, for some reason, Florida is unwilling to
+provide all of their energy burden data. Therefore, we must figure out
+what to do with only $n=25$ observations:
 
 ```{r}
 #| warning: false
@@ -1709,8 +1923,8 @@ df_fl |>
   )
 ```
 
-Given the limited data, our results will depend much more strongly on our prior distribution.
-
+Given the limited data, our results will depend much more strongly on
+our prior distribution.
 
 ## Print FL results
 
@@ -1913,23 +2127,25 @@ p_FL_NH_posterior <-
 p_FL_NH_predict + p_FL_NH_posterior 
 ```
 
-
 ## Study the results
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with     percent Black in Florida? Answer for each prior. 
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black in Florida? Answer for each prior.
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
 
 ## Full USA
 
-After waiting some time, we finally get access to the full U.S. CEJST dataset. With such a large dataset, we expect to see that the results will not depend so much on our choice of prior distribution.
+After waiting some time, we finally get access to the full U.S. CEJST
+dataset. With such a large dataset, we expect to see that the results
+will not depend so much on our choice of prior distribution.
 
 ## Print USA Results
 
@@ -2148,11 +2364,12 @@ p_USA_NH_predict + p_USA_NH_posterior
 
 ::: {.callout-note icon="false" title="Studying Model Results"}
 <!-- task-begin -->
--   What does the model suggest about the trend of energy burden with percent Black across the whole U.S.? Answer for each prior. 
+
+-   What does the model suggest about the trend of energy burden with
+    percent Black across the whole U.S.? Answer for each prior.
     -   (Write your response here):
 -   How well do the model predictions match the data?
     -   (Write your response here):
 -   How confident are you in your conclusion?
-    -   (Write your response here): 
-<!-- task-end -->
+    -   (Write your response here): <!-- task-end -->
 :::
