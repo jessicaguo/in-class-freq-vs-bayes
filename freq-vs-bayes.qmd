@@ -24,12 +24,12 @@ tool is identify and subsequently help communities disadvantaged by
 these burdens in government social programs.
 
 [The Climate and Economic Justice Screening
-Tool](https://screeningtool.geoplatform.gov/en/) (CEJST) is the result
-of the EO. While the tool established by the Council on Environmental
-Quality covers a number of burdens (health, transportation, and
-workforce development, for example), this activity will focus on the
-sustainability aspects of the tool, including climate change, energy,
-and legacy pollution burdens on communities.
+Tool](https://public-environmental-data-partners.github.io/j40-cejst-2/en/#3/33.47/-97.5)
+(CEJST) is the result of the EO. While the tool established by the
+Council on Environmental Quality covers a number of burdens (health,
+transportation, and workforce development, for example), this activity
+will focus on the sustainability aspects of the tool, including climate
+change, energy, and legacy pollution burdens on communities.
 
 To set the stage for this activity, we are going to use the CEJST data
 to explore whether there is a relationship between the energy burden
